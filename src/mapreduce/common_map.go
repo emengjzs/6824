@@ -65,7 +65,7 @@ func doMap(
 	}
 
 	// init output files and encoders
-	var outputList []*json.Encoder
+	outputList := make([]*json.Encoder, nReduce)
 	for i := 0; i < nReduce; i++ {
 		outputFileName := reduceName(jobName, mapTaskNumber, i)
 		outputFile, err := os.Create(outputFileName)
@@ -73,7 +73,7 @@ func doMap(
 			log.Printf("Create file(%s) fail: %v\n", outputFileName, err)
 		} else {
 			defer outputFile.Close()
-			outputList = append(outputList, json.NewEncoder(outputFile))
+			outputList[i] = json.NewEncoder(outputFile)
 		}
 	}
 
