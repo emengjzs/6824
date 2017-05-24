@@ -1,5 +1,12 @@
 package mapreduce
 
+import (
+	"encoding/json"
+	"io"
+	"log"
+	"os"
+)
+
 // doReduce manages one reduce task: it reads the intermediate
 // key/value pairs (produced by the map phase) for this task, sorts the
 // intermediate key/value pairs by key, calls the user-defined reduce function
@@ -11,6 +18,8 @@ func doReduce(
 	nMap int, // the number of map tasks that were run ("M" in the paper)
 	reduceF func(key string, values []string) string,
 ) {
+	log.Printf("Job %s Reduce task %d - [%d]: file(%s)\n",
+		jobName, reduceTaskNumber, nMap, outFile)
 	//
 	// You will need to write this function.
 	//
@@ -43,4 +52,38 @@ func doReduce(
 	// }
 	// file.Close()
 	//
+
+	// prepare data map
+	dataMap := make(map[string][]string)
+	for i := 0; i < nMap; i++ {
+		intermediateFilename := reduceName(jobName, i, reduceTaskNumber)
+		intermediateFile, err := os.Open(intermediateFilename)
+		if err != nil {
+			log.Printf("Open intermediateFile failed: file(%s)", intermediateFilename)
+			continue
+		}
+		defer intermediateFile.Close()
+		inputDecoder := json.NewDecoder(intermediateFile)
+		var kv KeyValue
+		for {
+			if err := inputDecoder.Decode(&kv); err == io.EOF {
+				break
+			} else if err != nil {
+				log.Printf("Fail decode intermediateFile (%s)", intermediateFilename)
+				continue
+			}
+			dataMap[kv.Key] = append(dataMap[kv.Key], kv.Value)
+		}
+	}
+	outputFile, err := os.Create(outFile)
+	if err != nil {
+		log.Printf("Create file(%s) fail: %v\n", outFile, err)
+	} else {
+		defer outputFile.Close()
+		encoder := json.NewEncoder(outputFile)
+		for key, values := range dataMap {
+			reduceKV := KeyValue{Key: key, Value: reduceF(key, values)}
+			encoder.Encode(&reduceKV)
+		}
+	}
 }
