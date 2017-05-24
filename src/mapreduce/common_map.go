@@ -61,7 +61,7 @@ func doMap(
 		jobName, mapTaskNumber, nReduce, inFile)
 	content, err := ioutil.ReadFile(inFile)
 	if err != nil {
-		log.Fatalf("Read file(%s) fail: %v", inFile, err)
+		log.Fatalf("Read file(%s) fail: %v\n", inFile, err)
 	}
 
 	// init output files and encoders
@@ -70,7 +70,7 @@ func doMap(
 		outputFileName := reduceName(jobName, mapTaskNumber, i)
 		outputFile, err := os.Create(outputFileName)
 		if err != nil {
-			log.Printf("Create file(%s) fail: %v", outputFileName, err)
+			log.Printf("Create file(%s) fail: %v\n", outputFileName, err)
 		} else {
 			defer outputFile.Close()
 			outputList = append(outputList, json.NewEncoder(outputFile))
@@ -85,7 +85,7 @@ func doMap(
 		kv := &kvList[i]
 		err := outputList[ihash(kv.Key)%nReduce].Encode(&kv)
 		if err != nil {
-			log.Printf("Decode json fail KV: key(%s) value(%s)", kv.Key, kv.Value)
+			log.Printf("Decode KV fail: key(%s) value(%s)\n", kv.Key, kv.Value)
 		}
 	}
 }
