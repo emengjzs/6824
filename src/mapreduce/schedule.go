@@ -47,23 +47,35 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
 	var finish sync.WaitGroup
 	finish.Add(ntasks)
 
+	taskSet := make(chan int)
+
 	assignTask := func(instance string, task int) {
 		taskArgs := getTaskArgsFunc(task)
 		success := call(instance, "Worker.DoTask", taskArgs, nil)
 		if !success {
 			fmt.Printf("Fail Task on instance(%s) phase(%v) task(%d/%d)", instance, phase, task, ntasks)
+			taskSet <- task
 		} else {
 			finish.Done()
 			registerChan <- instance
 		}
 	}
 
+	runTasks := func() {
+		for task := range taskSet {
+			instance := <-registerChan
+			go assignTask(instance, task)
+		}
+	}
+
+	go runTasks()
+
 	for i := 0; i < ntasks; i++ {
-		instance := <-registerChan
-		go assignTask(instance, i)
+		taskSet <- i
 	}
 
 	// wait until finish all tasks
 	finish.Wait()
+	close(taskSet)
 	fmt.Printf("Schedule: %v phase done\n", phase)
 }
